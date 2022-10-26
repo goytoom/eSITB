@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#SBATCH --job-name=fetchSelfharm
+#SBATCH --error=../logs/fetchSelfharm_%A_%a.err
+#SBATCH --output=../logs/fetchSelfharm_job_%j.out
+#SBATCH --array=1-20
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=1
+#SBATCH --mem=8GB
+#SBATCH --cpus-per-task=4
+#SBATCH --account=mdehghan_709
+
+module purge
+module restore cocv
+source ../../reddit/bin/activate
+
+srun python get_extractions.py ${SLURM_ARRAY_TASK_ID}

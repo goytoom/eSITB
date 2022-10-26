@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#SBATCH --job-name=tm_nr
+#SBATCH --error=../logs/tm_%A_%a.err
+#SBATCH --output=../logs/tm_%j.out
+#SBATCH --array=26-26
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=1
+#SBATCH --mem=64GB
+#SBATCH --cpus-per-task=8
+#SBATCH --account=mdehghan_709
+
+module purge
+module restore selfharm
+source ../../reddit/bin/activate
+
+srun python tm_nr.py 3 ${SLURM_ARRAY_TASK_ID}
+
