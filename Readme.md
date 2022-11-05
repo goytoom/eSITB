@@ -1,7 +1,8 @@
 # eSITB
 
-This is the repository to the paper Sharing is in Fact about Caring: Care Concerns Feature Prominently in Subreddits Devoted to Self-Injurious Thoughts and Behaviors".
-The repository contains all necessary files and code to replicate the data and the analysis. Please read the following instructions to replicate the data used in the paper's analysis.
+This is the repository to the paper "Sharing is in Fact about Caring: Care Concerns Feature Prominently in Subreddits Devoted to Self-Injurious Thoughts and Behaviors".
+
+The repository contains all necessary files and code to replicate the data and the analysis. Please read the following instructions to replicate the data used in the paper's analysis. The process to replicate the data for used in the statistical analysis is computationally intensive. For a replication of the study's analysis only, the final dataset is available upon request.
 
 ## Additional Data files
 
@@ -12,6 +13,7 @@ The repository contains all necessary files and code to replicate the data and t
 1. **We always used the combined texts (posts + comments) for all analyses**
 2. **We only used the moral/nonmoral and all concerns classifier in our analyses. Only use the additional examples, if you want to focus on certain texts (e.g., only comments/posts) and certain moral concerns (e.g., binding vs individualizing)**
 3. **Parts of this code were designed to run on a computing cluster/multiple machines in parallel. Adapt the respective .job files to run on your system/cluster. Otherwise, adapt the code to run on a single machine (potentially *very* slow).**
+4. **We used Reddit data from 1/1/2014-6/1/2021 for the paper's analysis. Adding additional data outside this range might change results.**
 
 ## Instructions (Training Moral Classifiier)
 1. Run `dataset_moral.py` to create the dataset from raw annotation data
