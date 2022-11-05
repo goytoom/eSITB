@@ -23,11 +23,14 @@ The repository contains all necessary files and code to replicate the data and t
   - `python moral_classifier.py 2` (binding vs individualizing concerns classifier)
   - `python moral_classifier.py 3` (all moral concerns classifier)
 
-## Instructions (Topic Modelling)
+## Instructions (Data collection + Topic Modelling)
 
-1. Use a command such as `aria2c` or equivalent to download the reddit data from the pushshift archives. Save the data under `data/pushshift/submissions` and `data/pushshift/comments` for posts and comments respectively.
-  - `aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/links_comments.txt -d ../data/pushshift/comments`
-  - `aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/links_submissions.txt -d ../data/pushshift/submissions`
+1. Run `links.py` to create of lists of links to the Reddit archives (one file per month).
+    - `python links.py --mode comments --start 2014-01 --end 2021-06`
+    - `python links.py --mode submissions --start 2014-01 --end 2021-06` (adapt time range as needed)
+2. Use a command such as `aria2c` or equivalent to download the reddit data from the pushshift archives. Save the data under `data/pushshift/submissions` and `data/pushshift/comments` for posts and comments respectively.
+  - `aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/pushshift/comments/links_comments.txt -d ../data/pushshift/comments`
+  - `aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/pushshift/submissions/links_submissions.txt -d ../data/pushshift/submissions`
 2. Run the `get_extractions.py` file to extract the relevant data from the archives.
   - `python get_extractions.py N` (designed to run parallel; replace N with 1-20; or adapt code to extract all files together)
 3. Run `read_to_database.py` to load the data into a database (e.g., MongoDB)
@@ -53,7 +56,12 @@ The repository contains all necessary files and code to replicate the data and t
   - `python merge_data 1 N` (moral vs nonmoral concerns; replace N with number of topics in model)
   - `python merge_data 2 N` (binding vs individualizing concerns; replace N with number of topics in model)
   - `python merge_data 3 N` (all moral concerns; replace N with number of topics in model)
-12. Run the `selfharm_analyses.Rmd` script in R to replicate the statistical analysis.
+
+## Instructions (Statistical Analysis)
+1. Run the `selfharm_analyses.Rmd` script in R to replicate the statistical analysis.
+    - See texts + comments in the markdown for detailed instructions
+    - The code can simply be run in sequence
+    - Each subsection has a separate title and description. Skip to respective sections as needed
 
 ## Instructions (Additional Code)
 - Run `ntopic_modelling.py` to get the coherence score for a given number of topics (loads existing model or extract topics if not; saves fitted model and its coherence score)
