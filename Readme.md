@@ -23,8 +23,8 @@ Note, that we only used the moral/nonmoral and all concerns classifier.
 Use the additional examples, if you want to focus on certain texts (e.g., only comments/posts) and certain moral concerns (e.g., binding vs individualizing)*
 
 1. Use a command such as `aria2c` or equivalent to download the reddit data from the pushshift archives. Save the data under `data/pushshift/submissions` and `data/pushshift/comments` for posts and comments respectively.
-  - aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/links_comments.txt -d ../data/pushshift/comments
-  - aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/links_submissions.txt -d ../data/pushshift/submissions
+  - `aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/links_comments.txt -d ../data/pushshift/comments`
+  - `aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/links_submissions.txt -d ../data/pushshift/submissions`
 2. Run the `get_extractions.py` files to extract the relevant data from the archives. If you have access to a computing cluster, you can use the `.job` files. Otherwise, adapt the code to run on your machine (potentially *very* slow).
   - `sbatch extractions.job`
 3. Run `read_to_database.py` to load the data into a database (e.g., MongoDB)
