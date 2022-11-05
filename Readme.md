@@ -40,8 +40,9 @@ The repository contains all necessary files and code to replicate the data and t
 6. Run `get_annotation_data_all.py` (all; combines posts and comments data for topic modelling)
   - `python get_annotation_data_all.py` 
 7. Run `predict_foundations.py` to classify moral concerns in each message
-  - `python predict_foundations.py 1` (moral vs non-moral classifier)
-  - `predict_foundations.py 3` (individual moral foundations classifier)
+  - `python predict_foundations.py 1` (moral vs non-moral concern classifier)
+  - `python predict_foundations.py 2` (binding vs individualizing concern classifier)
+  - `predict_foundations.py 3` (all moral concerns classifier)
 8. Run `topic_modelling.py` to run the topic modelling (hyperparameter tuning, determine the best parameter, outputs a graph for hyperparameter performance). 
   - `python topic_modelling.py 1` (posts)
   - `python topic_modelling.py 2` (comments)
