@@ -2,7 +2,7 @@
 
 This is the repository to the paper "Sharing is in Fact about Caring: Care Concerns Feature Prominently in Subreddits Devoted to Self-Injurious Thoughts and Behaviors".
 
-The repository contains all necessary files and code to replicate the data and the analysis. Please read the following instructions to replicate the data used in the paper's analysis. The process to replicate the data for used in the statistical analysis is computationally intensive. For a replication of the study's analysis only, the final dataset is available upon request.
+The repository contains all necessary files and code to replicate the data and the analysis. Please read the following instructions to replicate the data used in the paper's analysis. The process to replicate the data used in the statistical analysis is computationally intensive. For replication of the analysis excluding the data collection, the final dataset used in our analysis is available on request.
 
 ## Additional Data files
 
