@@ -24,6 +24,9 @@ import pickle
 import time
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+MKL_NUM_THREADS=1 
+NUMEXPR_NUM_THREADS=1 
+OMP_NUM_THREADS=1
 
 """ Set Mode """
 mode = int(sys.argv[1])
@@ -60,7 +63,8 @@ def compute_coherence_values(dictionary, corpus, texts, limit, start=2, step=3, 
     coherence_values = []
     model_list = []
     time_start = time.time()
-    
+
+    #modify for faster runtime (either chunksize, iterations or passes)
     for num_topics in range(start, limit, step):
         print("Extracting: " + str(num_topics) + " topics!")
         model=LdaMulticore(corpus=corpus, id2word=dictionary, num_topics=num_topics, alpha = "asymmetric", 
@@ -69,7 +73,7 @@ def compute_coherence_values(dictionary, corpus, texts, limit, start=2, step=3, 
         coherencemodel = CoherenceModel(model=model, texts=texts, coherence='c_npmi')
         coherence_values.append(coherencemodel.get_coherence())
         time_now = time.time()
-        print("Time since start :" + str(round(time_start-time_now, 2)))
+        print("Time since start :" + str(round(time_now-time_start, 2)))
     return model_list, coherence_values
 
 """ Import Data """
@@ -156,10 +160,6 @@ else:
 
     with open("../data/results/topics/coherence_values_" + text_type + ".pkl", "rb") as f:
             coherence_values = pickle.load(f)
-            
-# # Print the coherence scores
-# for m, u_mass in zip(x, coherence_values):
-#     print("Num Topics =", m, " has Coherence Value of", round(u_mass, 4))
     
 """ Visualize the topics (interactive) """
 file_paths = ['../data/auxiliary/pylda/ldavis_posts_opt', 

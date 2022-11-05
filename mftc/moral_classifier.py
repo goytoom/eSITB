@@ -7,6 +7,7 @@ Created on Sun Feb 13 10:46:22 2022
 
 import tensorflow_hub as hub
 import tensorflow as tf
+from tensorflow_addons.metrics import FBetaScore
 from tensorflow.keras.models import load_model 
 from keras.metrics import Precision, Recall
 import sys
@@ -18,6 +19,19 @@ from sklearn.metrics import f1_score as f1Score
 
 # import nltk
 # nltk.download('stopwords')
+
+def f1_loss(y_true, y_pred):
+	tp = K.sum(K.cast(y_true*y_pred, "float"), axis = 0)
+	tn = K.sum(K.cast((1-y_true)*(1-y_pred), "float"), axis = 0)
+	fp = K.sum(K.cast((1-y_true)*y_pred, "float"), axis = 0)
+	fn = K.sum(K.cast(y_true*(1-y_pred), "float"), axis = 0)
+	
+	p = tp/(tp + fp + K.epsilon())
+	r = tp/(tp + fn + K.epsilon())
+	
+	f1 = 2*p*r/(p + r + K.epsilon())
+	f1 = tf.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
+	return 1 - K.mean(f1)
 
 def build_model(bert_layer, max_len=512, classes = 5, activation = "sigmoid"):
     input_word_ids = tf.keras.Input(shape=(max_len,), dtype=tf.int32, name="input_word_ids")
@@ -32,15 +46,15 @@ def build_model(bert_layer, max_len=512, classes = 5, activation = "sigmoid"):
     sequence_output=outputs["sequence_output"]
 
     clf_output = sequence_output[:, 0, :]
-    net = tf.keras.layers.Dense(64, activation='relu')(clf_output)
+    net = tf.keras.layers.Dense(64, activation='relu')(clf_output) #128|0.5|64|0.5|32|0.5
     net = tf.keras.layers.Dropout(0.2)(net)
-    # net = tf.keras.layers.Dense(32, activation='relu')(net)
-    # net = tf.keras.layers.Dropout(0.2)(net)
+    net = tf.keras.layers.Dense(32, activation='relu')(net)
+    net = tf.keras.layers.Dropout(0.2)(net)
     out = tf.keras.layers.Dense(classes, activation=activation)(net)
 
     model = tf.keras.models.Model(inputs=[input_word_ids, input_mask, segment_ids], outputs=out)
     model.compile(tf.keras.optimizers.Adam(learning_rate=1e-5),
-                  loss='binary_crossentropy', metrics=["binary_crossentropy", Precision(), Recall(),'accuracy'])
+                  loss="binary_crossentropy", metrics=[Precision(), Recall(), FBetaScore(num_classes = classes, average = "macro", threshold = 0.5, name="f1_score", dtype = None)])
     model.summary()
     return model
 
@@ -56,17 +70,17 @@ def F1Measure(y_true, y_pred, threshold=0.5):
 
     return f1Score(y_true, y_binary, average = "weighted")    
 
-def train(mode, bert_layer):
+def train(model_file, mode, bert_layer):
     
-    classes = {"all": 5, "moral": 1, "binding": 2}
-    activation = {"all": "sigmoid", "moral": "sigmoid", "binding": "sigmoid"}
+    classes = {"full": 5, "moral": 1, "binding": 2}
+    activation = {"full": "sigmoid", "moral": "sigmoid", "binding": "sigmoid"}
     model = build_model(bert_layer, max_len=256, classes = classes[mode], activation = activation[mode])
 
     print(model.summary())
     with open("data/train_" + mode + ".pkl", "rb") as f:
         X_train, y_train = pkl.load(f)
 
-    checkpoint = tf.keras.callbacks.ModelCheckpoint('models/model_' + mode + '.h5', monitor='val_loss', save_best_only=True, verbose=1)
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(model_file, monitor='val_loss', save_best_only=True, verbose=1)
     earlystopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, verbose=1)
 
     print("start training")
@@ -92,13 +106,13 @@ def evaluate(model_file, data_file, bert_layer, threshold=0.5):
     print('predicted')
     
     f1_score = F1Measure(y_test, y_pred, threshold=0.9)
-    print(f"threshold: {0.5}, score :{f1_score}")
+    print(f"threshold: {0.9}, score :{f1_score}")
     f1_score = F1Measure(y_test, y_pred, threshold=0.8)
-    print(f"threshold: {0.4}, score :{f1_score}")
+    print(f"threshold: {0.8}, score :{f1_score}")
     f1_score = F1Measure(y_test, y_pred, threshold=0.7)
-    print(f"threshold: {0.3}, score :{f1_score}")
+    print(f"threshold: {0.7}, score :{f1_score}")
     f1_score = F1Measure(y_test, y_pred, threshold=0.6)
-    print(f"threshold: {0.2}, score :{f1_score}")
+    print(f"threshold: {0.6}, score :{f1_score}")
     f1_score = F1Measure(y_test, y_pred, threshold=0.5)
     print(f"threshold: {0.5}, score :{f1_score}")
     f1_score = F1Measure(y_test, y_pred, threshold=0.4)
@@ -116,26 +130,20 @@ def evaluate(model_file, data_file, bert_layer, threshold=0.5):
 
 if __name__ == '__main__':
 
-    i = 0 #int(sys.argv[1])
+    i = int(sys.argv[1])
     Path("models").mkdir(parents=True, exist_ok=True)
     
-    # module_url = 'https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/4'
-    # module_url = "https://tfhub.dev/tensorflow/small_bert/bert_en_uncased_L-10_H-128_A-2/2"
     module_url = "https://tfhub.dev/tensorflow/small_bert/bert_en_uncased_L-12_H-256_A-4/2"
-    # module_url = "https://tfhub.dev/tensorflow/small_bert/bert_en_uncased_L-10_H-512_A-8/2"
-    # module_url = "https://tfhub.dev/digitalepidemiologylab/covid-twitter-bert/2" # large covid model
-    # module_url = "https://tfhub.dev/tensorflow/albert_en_large/3
-    # module_url = "https://tfhub.dev/tensorflow/albert_en_xlarge/3
-    # module_url = "https://tfhub.dev/tensorflow/albert_en_xxlarge/3
     bert_layer = hub.KerasLayer(module_url, trainable=True)
 
-    modes = ["moral", "binding", "all"]
-    mode = modes[i]
+    modes = ["moral", "binding", "full"]
+    mode = modes[i-1]
+    print(mode)
     
     data_file = "data/test_" + mode + ".pkl"
-    model_file = "models/model_" + mode + ".h5"
+    model_file = "models/model_" + mode + "_new.h5"
     
-    train(mode, bert_layer)
+    train(model_file, mode, bert_layer)
     evaluate(model_file, data_file, bert_layer) 
     
     

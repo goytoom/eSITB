@@ -39,7 +39,7 @@ def preprocessing(df, col):
     texts       = [re.sub(r"(?P<url>www.[^\s]+)", "", x) for x in texts]                #remove url  (without https)
     texts       = [re.sub(r'[\w\.-]+@[\w\.-]+', "", x) for x in texts]                  #replace emails 
     texts       = [re.sub(r'-(?!\w)|(?<!\w)-', '', x) for x in texts]                   #remove hyphen except within words
-    texts       = [re.sub(r'[,\.!?():]', '', x) for x in texts]                         #remove punctuation
+    texts       = [re.sub(r'[,\.!?():]', '', x) for x in texts]                             #remove punctuation
     texts       = [re.sub(r'\[deleted\]', '', x) for x in texts] 
     texts       = [re.sub(r'\[removed\]', '', x) for x in texts] 
 
@@ -56,10 +56,6 @@ def preprocessing(df, col):
     return df #return dataframe with processed texts
 
 # auxiliaryiliary functions       
-def remove_stopwords(texts):
-    return [[word for word in simple_preprocess(str(doc)) 
-              if word not in stop_words] for doc in texts]
-
 def lemmatizing(sentences, allowed_postags=set(['NOUN', 'ADJ', 'VERB', 'ADV']), n_process = 2, batch_size = 64):
     for doc in nlp.pipe(sentences, batch_size=batch_size, n_process=n_process, disable=['ner', "parser"]):
         yield [token.lemma_ for token in doc if (token.pos_ in allowed_postags and token.lemma_.lower() not in stop_words)]
@@ -99,69 +95,36 @@ elif mode == 2:
 else:
     pass
 
-if mode < 3:
-    """ Corpora """
-    allowed_postags = set(['NOUN', 'ADJ', 'VERB', 'ADV'])
-    files = ["posts", "comments"]
-    
-    data = df.cleaned_text.values.tolist()
-    words = [" ".join([token for token in tokens.split() if token not in stop_words]) for tokens in data]
-    lemmatized = list(lemmatizing(words, allowed_postags=allowed_postags, n_process=int(CPU_CORES/2)-1, batch_size=64)) # includes remove stopwords
+""" Corpora """
+allowed_postags = set(['NOUN', 'ADJ', 'VERB', 'ADV'])
+files = ["posts", "comments"]
 
-    #create dictionary and filter extreme words (in too many docs or in too few)    
-    id2word = corpora.Dictionary(lemmatized)
-    id2word.filter_extremes(no_above=0.5, no_below=20)
+data = df.cleaned_text.values.tolist()
+words = [" ".join([token for token in tokens.split() if token not in stop_words]) for tokens in data]
+lemmatized = list(lemmatizing(words, allowed_postags=allowed_postags, n_process=int(CPU_CORES/2)-1, batch_size=64)) # includes remove stopwords
 
-    keep_tokens = set(list(id2word.values())) #creat set of tokens that are in the dictionary
-    
-    #dicts
-    with open('../data/auxiliary/dict_' + files[mode-1] + '.pkl', 'wb') as f:
-        pickle.dump(id2word, f)
+#create dictionary and filter extreme words (in too many docs or in too few)    
+id2word = corpora.Dictionary(lemmatized)
+id2word.filter_extremes(no_above=0.5, no_below=20)
 
-    lemmatized = [[token for token in tokens if token in keep_tokens] for tokens in lemmatized] #filter out extreme words from corpus
+keep_tokens = set(list(id2word.values())) #creat set of tokens that are in the dictionary
 
-    with open('../data/auxiliary/lemma_' + files[mode-1] + '.pkl', 'wb') as f:
-            pickle.dump(lemmatized, f)
-    
-    # Create Corpus
-    # Term Document Frequency
-    corpus = [id2word.doc2bow(text) for text in lemmatized]
-    
-    #save corpus
-    with open('../data/auxiliary/corpus_' + files[mode-1] + '.pkl', 'wb') as f:
-        pickle.dump(corpus, f)
-        
-else:
-    if set(["lemma_posts.pkl", "lemma_comments.pkl"]).issubset(set(os.listdir("../data/auxiliary/"))):
-        # get all by combining other two:
-            # maybe put this in other file
-        with open('../data/auxiliary/lemma_posts.pkl', 'rb') as f:
-            lemmatized_posts = pickle.load(f)
-            
-        with open('../data/auxiliary/lemma_comments.pkl', 'rb') as f:
-            lemmatized_comments = pickle.load(f)
-            
-        lemmatized_all = lemmatized_posts + lemmatized_comments
-        
-        with open('../data/auxiliary/lemma_all.pkl', 'wb') as f:
-            pickle.dump(lemmatized_all, f)
-        
-        # Create Dictionary
-        id2word_all = corpora.Dictionary(lemmatized_all)
-    
-        with open('../data/auxiliary/dict_all.pkl', 'wb') as f:
-            pickle.dump(id2word_all, f)
-        
-        # Create Corpus
-        # Term Document Frequency
-        corpus_all = [id2word_all.doc2bow(text) for text in lemmatized_all]
-        
-        #corpus            
-        with open('../data/auxiliary/corpus_all.pkl', 'wb') as f:
-            pickle.dump(corpus_all, f)
-    else:
-        pass
+#dicts
+with open('../data/auxiliary/dict_' + files[mode-1] + '.pkl', 'wb') as f:
+pickle.dump(id2word, f)
 
+lemmatized = [[token for token in tokens if token in keep_tokens] for tokens in lemmatized] #filter out extreme words from corpus
+
+with open('../data/auxiliary/lemma_' + files[mode-1] + '.pkl', 'wb') as f:
+    pickle.dump(lemmatized, f)
+
+# Create Corpus
+# Term Document Frequency
+corpus = [id2word.doc2bow(text) for text in lemmatized]
+
+#save corpus
+with open('../data/auxiliary/corpus_' + files[mode-1] + '.pkl', 'wb') as f:
+pickle.dump(corpus, f)
 
 
 

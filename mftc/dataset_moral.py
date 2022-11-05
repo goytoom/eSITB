@@ -4,7 +4,6 @@ Created on Sun Feb 13 10:47:15 2022
 
 @author: suhai
 """
-# only get moral/non-moral data -> make function with output list
 
 import numpy as np
 import pandas as pd
@@ -21,7 +20,7 @@ import pickle as pkl
 # nltk.download('stopwords')
 
 foundations = {"binding": ["individual", "binding"], "moral": ["moral"],
-               "all": ["care", "fairness", "loyalty", "authority", "purity"]}
+               "full": ["care", "fairness", "loyalty", "authority", "purity"]}
 
 foundations_dict = {"binding": {"harm": "individual", "care": "individual", "degradation": "binding", 
                     "purity": "binding", "betrayal": "binding", "loyalty": "binding", 
@@ -34,7 +33,7 @@ foundations_dict = {"binding": {"harm": "individual", "care": "individual", "deg
                                     "subversion": "moral", "authority": "moral",
                                     "cheating": "moral", "fairness": "moral", 
                                     "non-moral": "non-moral", "nm": "non-moral"},
-                    "all": {"harm": "care", "care": "care", "degradation": "purity", 
+                    "full": {"harm": "care", "care": "care", "degradation": "purity", 
                                         "purity": "purity", "betrayal": "loyalty", "loyalty": "loyalty", 
                                         "subversion": "authority", "authority": "authority",
                                         "cheating": "fairness", "fairness": "fairness", 
@@ -135,8 +134,6 @@ def pre_process_text(X, y, tokenizer):
 
 if __name__ == '__main__':
     module_url = 'https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/4'
-    # module_url = "https://tfhub.dev/tensorflow/albert_en_xlarge/3"
-    # module_url = "https://tfhub.dev/tensorflow/albert_en_xxlarge/3"
     bert_layer = hub.KerasLayer(module_url, trainable=True)
 
     # mode = "binding"
@@ -149,12 +146,6 @@ if __name__ == '__main__':
             pkl.dump([X_train, y_train], f)
         with open("data/test_" + mode + ".pkl","wb") as f:
             pkl.dump([X_test, y_test], f)
-        
-    # X_train, y_train, X_test, y_test = construct_dataset(data_file="data/mftc_cleaned.csv", bert_layer=bert_layer)
-    # with open("data/train_data2.pkl","wb") as f:
-    #     pkl.dump([X_train,y_train],f)
-    # with open("data/test_data2.pkl","wb") as f:
-    #     pkl.dump([X_test,y_test],f)
     
     
     

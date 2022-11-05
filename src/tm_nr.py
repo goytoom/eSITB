@@ -169,9 +169,10 @@ if not os.path.isfile("../data/results/topics/typical_docs_" + text_type + "_" +
     sent_topics_sorteddf = pd.DataFrame()
     sent_topics_outdf_grpd = df_topic_sents_keywords.groupby('Dominant_Topic')
 
+    # modify to extent to 10 examples!
     for i, grp in sent_topics_outdf_grpd:
         sent_topics_sorteddf = pd.concat([sent_topics_sorteddf,
-                                                 grp.sort_values(['Perc_Contribution'], ascending=[0]).head(1)],
+                                                 grp.sort_values(['Perc_Contribution'], ascending=[0]).head(10)],
                                                 axis=0)
     # Reset Index
     sent_topics_sorteddf.reset_index(drop=True, inplace=True)

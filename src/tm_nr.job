@@ -3,7 +3,7 @@
 #SBATCH --job-name=tm_nr
 #SBATCH --error=../logs/tm_%A_%a.err
 #SBATCH --output=../logs/tm_%j.out
-#SBATCH --array=26-26
+#SBATCH --array=27-30
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --mem=64GB

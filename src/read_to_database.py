@@ -11,31 +11,6 @@ import os
 import json
 
 """ Functions """
-# def findById_Sub(db, id): #given a post id and a database, return the respective submissions
-#     #change to function:
-#     submissions = list(db.collection.aggregate(
-#     [# //De-normalized the nested array of cars
-#     {"$unwind": "$submissions"},
-#     # //match carId to 3C
-#     {"$match": {"submissions.id" : id}},
-#     # //Project the submissions object only
-#     {"$group": { "_id": '$submissions.id', "sub": { "$addToSet": '$submissions'}}},
-#     ]))
-#     return submissions
-
-# def findById_Comm(db, id): #given a post id and a database, return ALL the respective comments
-#     #change to function:
-#     id = "t3_" + id #add prefix
-#     comments = list(db.collection.aggregate(
-#     [# //De-normalized the nested array of cars
-#     {"$unwind": "$comments"},
-#     # //match carId to 3C
-#     {"$match": {"comments.link_id" : id}},
-#     # //Project the submissions object only
-#     {"$group": { "_id": '$comments.id', "sub": { "$addToSet": '$comments'}}},
-#     ]))
-#     return comments
-
 def readToDB(folders):
     file_data = []
     for filename in folders:

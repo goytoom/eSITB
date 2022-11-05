@@ -64,11 +64,8 @@ def get_binary(_y, threshold):
     return y
 
 def predict(df_list, mode, thresholds):
-    # module_url = 'https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/4'
-    # module_url = "https://tfhub.dev/tensorflow/small_bert/bert_en_uncased_L-10_H-128_A-2/2"
-    # module_url = "https://tfhub.dev/google/albert_large/2"
-    
-    module_url = "../mftc/models/bert_en_uncased_L-12_H-768_A-12_4/" #local directory
+    module_url = 'https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/4' # use this if you want to download it from tfhub!    
+    # module_url = "../mftc/models/bert_en_uncased_L-12_H-768_A-12_4/" #local directory
     
     bert_layer = hub.KerasLayer(module_url, trainable=True)    
     vocab_file = bert_layer.resolved_object.vocab_file.asset_path.numpy()
@@ -109,7 +106,7 @@ i = int(sys.argv[1])
 df_list_raw = ["results/all_posts.csv", "results/all_comments.csv"]
 df_list = [path + x for x in df_list_raw]
 
-modes = ["moral", "binding", "full"]
+modes = ["moral", "binding", "full"] #we only used the full and moral model for the sharing is caring paper
 thresholds = [0.5]
 
 results = predict(df_list, mode = modes[i-1], thresholds = thresholds)

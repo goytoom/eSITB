@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#SBATCH --job-name=all_annotation
+#SBATCH --error=../logs/all_annotation_%A_%a.err
+#SBATCH --output=../logs/all_annotation_%j.out
+#SBATCH --time=2:00:00
+#SBATCH --ntasks=1
+#SBATCH --mem=16GB
+#SBATCH --cpus-per-task=2
+#SBATCH --account=mdehghan_709
+
+module purge
+module restore selfharm
+source ../../reddit/bin/activate
+
+srun python get_annotation_data_all.py
+
