@@ -8,7 +8,7 @@ The repository contains all necessary files and code to replicate the data and t
 - `data/links_comments.txt`: URLs for the reddit archive files (comments)
 - `data/links_submissions.txt`: URLs for the reddit archive files (submissions)
 
-## Instructions (Training Moral Classificier)
+## Instructions (Training Moral Classifiier)
 1. Run `dataset_moral.py` to create the dataset from raw annotation data
   - `python dataset_moral.py`
 2. Run `moral_classifier.py` to create the dataset from raw annotation data
