@@ -23,7 +23,7 @@ The repository contains all necessary files and code to replicate the data and t
 **Note, that we only used the moral/nonmoral and all concerns classifier.
 Use the additional examples, if you want to focus on certain texts (e.g., only comments/posts) and certain moral concerns (e.g., binding vs individualizing)**
 
-**Note that parts of this code were designed to run on a computing cluster/multiple machines in parallel. Adapt the .job files to run on your system/cluster. Otherwise, adapt the code to run on a single machine (potentially *very* slow).
+**Note that parts of this code were designed to run on a computing cluster/multiple machines in parallel. Adapt the .job files to run on your system/cluster. Otherwise, adapt the code to run on a single machine (potentially *very* slow).**
 
 1. Use a command such as `aria2c` or equivalent to download the reddit data from the pushshift archives. Save the data under `data/pushshift/submissions` and `data/pushshift/comments` for posts and comments respectively.
   - `aria2c -c -s 16 -x 16 -k 1M -j 4 -i ../data/links_comments.txt -d ../data/pushshift/comments`
