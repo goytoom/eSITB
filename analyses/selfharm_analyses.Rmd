@@ -11,26 +11,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Packages
 
-```{r}
-#library(tidyverse,  lib.loc = "/usr/lib/R/site-library")
+```{r warning=F, message=F, error=F}
 library(tidyverse)
-library(sjPlot)  # for plotting effects
-library(modelsummary)  # for making tables
-library(rstudioapi)
 library(kableExtra)
-library(data.table)
-# library(stargazer)
-# library(magick)
-# library(gtsummary)
 theme_set(theme_bw())  # Theme; just my personal preference
 ```
 
 # Moral/Non-moral
 ## Load Data
 
-```{r}
-setwd("H:/My Drive/PhD/Research/self-injury/original/src")
+Load the final data set: Messages with assigned conversation topics, moral concerns (moral vs non-moral) and Reddit stats, such as likes, etc.
+For this paper, we analyzed the identified topics and named them in the "topic_26_named.csv" file. For the usage of new/self-collected data this step has to be performed manually before the analysis.
 
+```{r warning=F, message=F, error=F}
 #load data - choose best performing number of topics (here 26)
 path_m = "../data/results/merged_data_all_moral_26.csv"
 df_m = read_csv(path_m)  %>% filter(!(type == "comment" & is.na(parent_num_comments)) & !(type == "post" & is.na(num_comments))) #remove empty rows
@@ -39,13 +32,13 @@ df_m = df_m %>% filter(subreddit != "gme_suicidewatch") #remove unwanted subredd
 #load cluster names (manually created by clinical psychologist based on key phrases and examples)
 path_topics = "../data/results/topic_26_named.csv"
 df_topics = read_csv(path_topics) %>% dplyr::select(Dominant_Topic, Topic_Name)
-df_m[is.na(df_m$title),]$title = "" #keep emtpy strings as strings and not NA
+df_m[is.na(df_m$title),]$title = "" #keep empty strings as strings and not NA
 
 #merge message data with topic information
 df_m <- merge(df_m, df_topics, by = "Dominant_Topic", all.x = T)
 df_m$Topic_Name <- relevel(factor(df_m$Topic_Name),"negative_thoughts")
 
-# reformat variable and create control variables
+# reformat variable and create control variables (word count to control for message length, engagement to control for visibility as comments under a post with a lot of likes are more visible to the user than posts with less likes)
 df_cleaned_m <- df_m %>% mutate(Dominant_Topic = factor(Dominant_Topic), 
                                 moral=factor(moral),
                                 combined_text = paste(title, text, sep = " ")) %>% 
@@ -56,11 +49,14 @@ df_cleaned_m <- df_m %>% mutate(Dominant_Topic = factor(Dominant_Topic),
 
 ## Descriptive stats
 
-```{r}
-#Percentage of r/SuicideWatch among Subreddits:
-df_cleaned_m %>% group_by(subreddit) %>% summarise(freq_subreddit = n()) %>% mutate(perc_subreddit = round(freq_subreddit/nrow(df_cleaned_m), 3))
- #~82.4% suicide watch
+Calculate descriptive information and create tables:
+- Distribution of message type (post vs comment; frequency)
+- Distribution of moral vs non-moral messages (percentage)
+- Distribution of moral vs non-moral messages by message type (percentage)
+- Distribution of conversation topics (frequency, percentage)
 
+
+```{r}
 #frequency by message type
 df_cleaned_m %>% group_by(type) %>% summarise(freq = n())
 
@@ -69,8 +65,8 @@ df_cleaned_m %>% summarise(total_perc_moral_messages = mean(moral==1)) #%38.7% m
 df_cleaned_m %>% group_by(type) %>% summarise(perc_moral_messages = round(mean(moral==1),3)) #%33% in comments, 49% in posts
 
 #Topic distribution
-topic_dist_m <- df_cleaned_m %>% group_by(Topic_Name) %>% dplyr::summarise(n=n()) %>% 
-  mutate(Topic_Percentage = n/sum(n)) %>% arrange(desc(Topic_Percentage)) %>% dplyr::select(-n) 
+topic_dist_m <- df_cleaned_m %>% group_by(Topic_Name) %>% dplyr::summarise(frequency=n()) %>% 
+  mutate(Topic_Percentage = frequency/sum(frequency)) %>% arrange(desc(Topic_Percentage)) # %>% dplyr::select(-n) 
 
 topic_dist_m %>% kbl() %>% kable_material(c("striped", "hover"))
 ```
@@ -78,116 +74,88 @@ topic_dist_m %>% kbl() %>% kable_material(c("striped", "hover"))
 
 ## Models
 
+Fit a regression model with conversation topic and moral concerns predicting message likes controlled for message length and message visibility.
+This model estimates how much more likes a moral message receives on average compared to a non-moral messages controlled for the above factors.
 ```{r}
-lm_m_1 <- lm(score ~ Topic_Name*moral + n_words + engagement, df_cleaned_m)  
-(coef(lm_m_1)["moral1"] + coef(lm_m_1)["(Intercept)"])/coef(lm_m_1)["(Intercept)"] # 5.6 times more likes for moral posts get, when controlling for all other variables
+lm_m_1 <- lm(score ~ Topic_Name*moral + n_words + engagement, df_cleaned_m)  #fit model
+(coef(lm_m_1)["moral1"] + coef(lm_m_1)["(Intercept)"])/coef(lm_m_1)["(Intercept)"] #calculate difference between moral and non-moral message
+# 5.6 times more likes for moral posts get, when controlling for all other variables
 
-summary(lm_m_1) #model output 
-```
-
-## Plots
-### Distributions
-
-Create plots for the distribution of conversation topics and moral concerns across messages (frequency)
-```{r}
-#Topics
-ggplot(data=topic_dist_m, aes(x=Topic_Name, fill=Topic_Name)) + 
-  geom_bar(aes(x=Topic_Name,y=Topic_Percentage),stat="identity") + theme(axis.text.x = element_text(angle=90, hjust=1))
-
-#Moral Concerns
-df_plot = df_cleaned_m %>% group_by(type) %>% dplyr::summarise(perc = sum(moral==1)/n())
-ggplot(data=df_plot, aes(x=type, fill=type)) + geom_bar(aes(x=type,y=perc),stat="identity", position="dodge") + ylab("Percent of posts with moral concerns") + xlab('Post type') + labs(fill="Post type") + guides(fill="none") + theme_bw() 
-```
-
-### Main Effects
-
-Show the main effect of moral concerns on message likes
-```{r}
-#make nicer
-plot_model(lm_m_1, type = "pred", terms=c("moral"))
-```
-
-### Interactions
-
-Show the interaction of conversation topic and expressing moral concerns on message likes
-```{r}
-plot_model(lm_m_1, type = "pred", terms=c("Topic_Name", "moral")) + theme(axis.text.x = element_text(angle=90, hjust=1))
+# summary(lm_m_1) #model output 
 ```
 
 
 # All Foundations
 ## Load Data
 
-```{r message=F, warning=F}
-setwd("H:/My Drive/PhD/Research/self-injury/original/src")
+Load the final data set: Messages with assigned conversation topics, moral concerns (all foundations) and Reddit stats, such as likes, etc.
+For this paper, we analyzed the identified topics and named them in the "topic_26_named.csv" file. For the usage of new/self-collected data this step has to be performed manually before the analysis.
 
+```{r message=F, warning=F}
+#define path to data - choose best performing number of topics (here 26)
 path_a = "../data/results/merged_data_all_full_26.csv"
 path_topics = "../data/results/topic_26_named.csv"
 
 #load data and topics information
-df_a = read_csv(path_a) %>% filter(!(type == "comment" & is.na(parent_num_comments)) & !(type == "post" & is.na(num_comments)))
-#remove empty rows
+df_a <- read_csv(path_a) %>% filter(!(type == "comment" & is.na(parent_num_comments)) & !(type == "post" & is.na(num_comments)))
+#remove empty rows (artefacts from merging data sets)
 
-df_topics = read_csv(path_topics) %>% dplyr::select(Dominant_Topic, Topic_Name)
+df_topics <- read_csv(path_topics) %>% dplyr::select(Dominant_Topic, Topic_Name)
 df_a[is.na(df_a$title),]$title = "" #keep empty title as empty string and not NA
 
 #merge data
 df_a <- merge(df_a, df_topics, by = "Dominant_Topic", all.x = T)
 df_a$Topic_Name <- relevel(factor(df_a$Topic_Name),"negative_thoughts") #put negative thoughts as reference point
 
-# clean data: add word count and filter posts with no comment (not enough engagement/views)
-# word count as control variable (message length)
+# clean data: add word count and engagement as control variables (message length & number of comments under post)
 df_cleaned_a <- df_a %>% mutate(Dominant_Topic = factor(Dominant_Topic), 
                                 care=factor(care), fairness=factor(fairness),
                                 loyalty=factor(loyalty), 
                                 authority=factor(authority), 
-                                purity=factor(purity), 
-                                log_score = scale(sign(score) * log(abs(score) + 1)), #log modulus transformation (count data with negative values)
+                                purity=factor(purity),
                                 combined_text = paste(title, text, sep = " ")) %>%
                                 mutate(n_words = stringr::str_count(combined_text, '\\S+'),
                                        engagement = ifelse(!is.na(num_comments), num_comments, parent_num_comments))
 ```
+
+
+### Determine moral messages without identified type of moral concern ("Thin-Morality")
+```{r}
+#which/how many moral messages have no foundation associated?
+moral_labels <- df_cleaned_m %>% select(id, moral) #get moral/non-moral labels
+foundation_labels <- df_cleaned_a %>% select(id, care, fairness, loyalty, authority, purity) #get individual foundation labels
+
+all_labels <- merge(moral_labels, foundation_labels, by = 'id') # merge both labels
+ids <- all_labels %>% filter(moral==1 & care==0 & fairness==0 & loyalty==0 & authority==0 & purity==0) %>% select(id) #identify ids of thin-moral messages
+
+# add thin morality label to data set
+df_cleaned_a <- df_cleaned_a %>% mutate(thin = ifelse(id %in% ids$id, 1, 0))
+df_a <- df_a %>% mutate(thin = ifelse(id %in% ids$id, 1, 0))
+```
+
 
 ## Descriptive Stats
 
 Create descriptive stats tables (e.g., distribution of each type of moral concerns in all messages and among messages with moral concerns)
 ```{r}
 #distribution of each type of moral concern among all messages
-df_cleaned_a %>% dplyr::select(care, fairness, loyalty, authority, purity) %>% dplyr::summarise(care = round(sum(care==1)/n()*100,1), #20.3%
+df_cleaned_a %>% dplyr::select(care, fairness, loyalty, authority, purity, thin) %>% 
+                                        dplyr::summarise(care = round(sum(care==1)/n()*100,1), #20.3%
                                                          fairness = round(sum(fairness==1)/n()*100,1), #1%
                                                          loyalty = round(sum(loyalty==1)/n()*100,1), #1%
                                                          authority = round(sum(authority==1)/n()*100,1), #0.1%
-                                                         purity = round(sum(purity==1)/n()*100,1)) %>% kbl() %>%   kable_material(c("striped", "hover"))
+                                                         purity = round(sum(purity==1)/n()*100,1),
+                                                         thin = round(sum(thin==1)/n()*100,1),
+                 none = round((100 - care - fairness - loyalty - authority - purity - thin),1)) %>% 
+  kbl() %>%   kable_material(c("striped", "hover"))
 
-# distribution of each type of moral concerns among message with a moral concern
-df_cleaned_a %>% filter(care==1 | fairness==1 | loyalty==1 | authority==1 | purity==1) %>% dplyr::select(care, fairness, loyalty, authority, purity) %>% dplyr::summarise(care = round(sum(care==1)/n()*100,1), #20.3%
+# distribution of each type of moral concerns among message with an identified moral concern
+df_cleaned_a %>% filter(care==1 | fairness==1 | loyalty==1 | authority==1 | purity==1) %>% dplyr::select(care, fairness, loyalty, authority, purity, thin) %>% dplyr::summarise(care = round(sum(care==1)/n()*100,1), #20.3%
                                                          fairness = round(sum(fairness==1)/n()*100,1), #1%
                                                          loyalty = round(sum(loyalty==1)/n()*100,1), #1%
                                                          authority = round(sum(authority==1)/n()*100,1), #0.1%
-                                                         purity = round(sum(purity==1)/n()*100,1)) %>% kbl() %>%   kable_material(c("striped", "hover"))
+                                                         purity = round(sum(purity==1)/n()*100,1)) %>% kbl() %>%  kable_material(c("striped", "hover"))
                                                           # 0.3% purity -> 25%moral
-
-# Distribution of conversation topics among all messages
-topics_distribution <- df_cleaned_a %>% group_by(Topic_Name)%>% summarise(n = n()) %>% mutate(freq = round(n / sum(n)*100, 1)) %>% ungroup() %>% arrange(desc(freq))
-
-topics_distribution
-```
-
-Determine moral messages without identified type of moral concern ("Thin-Morality")
-```{r}
-#which/how many moral messages have no foundation associated?
-moral_labels <- df_cleaned_m %>% select(id, moral)
-foundation_labels <- df_cleaned_a %>% select(id, care, fairness, loyalty, authority, purity)
-
-all_labels <- merge(moral_labels, foundation_labels, by = 'id')
-
-all_labels %>% filter(moral==1 & care==0 & fairness==0 & loyalty==0 & authority==0 & purity==0) %>% dplyr::summarise(n(), n()/nrow(all_labels))
-all_labels %>% filter(moral==0 & care==0 & fairness==0 & loyalty==0 & authority==0 & purity==0) %>% dplyr::summarise(n(), n()/nrow(all_labels))
-
-ids <- all_labels %>% filter(moral==1 & care==0 & fairness==0 & loyalty==0 & authority==0 & purity==0) %>% select(id)
-
-# get some examples 
-df_cleaned_a %>% select(id, text) %>% filter(id %in% ids[3:4,]) %>% pull(text)
 ```
 
 
@@ -195,109 +163,110 @@ df_cleaned_a %>% select(id, text) %>% filter(id %in% ids[3:4,]) %>% pull(text)
 
 Train regression models of conversation topics, moral concerns and control variables. This code fits multiple models in order to compare predictor contributions.
 ```{r}
-# Full data
-lm_a_1 <- lm(score ~ Topic_Name*(care+fairness+loyalty+authority+purity) + n_words + engagement, df_cleaned_a) #full model with all interactions
-summary(lm_a_1) #NSSI concealment gets most likes
+# Full model
+lm_a_4 <- lm(score ~ Topic_Name*(care+fairness+loyalty+authority+purity) + n_words + engagement, df_cleaned_a) #full model with all interactions
 
-## model comparison
+## train alternative models for model comparison
 lm_a_0 <- lm(score ~ n_words + engagement, df_cleaned_a) # no predictors
-lm_a_2 <- lm(score ~ Topic_Name + (care+fairness+loyalty+authority+purity) + n_words + engagement, df_cleaned_a) #no interactions
-lm_a_3 <- lm(score ~ Topic_Name + n_words + engagement, df_cleaned_a) #no concerns
-lm_a_4 <- lm(score ~ (care+fairness+loyalty+authority+purity) + n_words + engagement, df_cleaned_a) # only concerns
-
-anova(lm_a_0, lm_a_1) # adding topics significantly adds to the model
-anova(lm_a_0, lm_a_4) # adding concerns significantly adds to the model
-anova(lm_a_3, lm_a_4) # topics explain more than concerns
-anova(lm_a_4, lm_a_2) # adding topics to concerns adds significantly
-anova(lm_a_3, lm_a_2) # adding moral concerns adds significantly to the model
-anova(lm_a_2, lm_a_1) # adding interactions of concerns and topics adds significantly to the model
+lm_a_1 <- lm(score ~ Topic_Name + n_words + engagement, df_cleaned_a) #only topics
+lm_a_2 <- lm(score ~ (care+fairness+loyalty+authority+purity) + n_words + engagement, df_cleaned_a) # only concerns
+lm_a_3 <- lm(score ~ Topic_Name + (care+fairness+loyalty+authority+purity) + n_words + engagement, df_cleaned_a) #no interactions
 ```
 
 
-Print out regression coefficients of the main model.
+### Model Output
+
+Show main model coefficients
 ```{r}
-#sorted regression coefficient table
-gt_1 <- lm_a_1 %>% 
-  gtsummary::tbl_regression() %>% bold_labels() %>%
-  gtsummary::modify_caption("Table 1: Summary Statistics of Reddit Karma by message topic and moral concerns")# %>% gt::as_latex()
+summary(lm_a_4) #NSSI concealment gets most likes
+```
 
-gt::gtsave(as_gt(gt_1), file = "temp.tex")
-gt::gtsave(as_gt(gt_1), file = "temp.rtf")
 
+### Model Comparisons
+
+Compare zero model with full model. Does the full model explain variance beyond the controls? Yes!
+```{r}
+anova(lm_a_0, lm_a_4) # full model adds significantly to explained variance compared to null model
+```
+
+
+What predictors add significantly to explained variance? Topics, predictors and/or their interaction?
+Compare null model (M0) with topics only predictor model (M1): Topics add significantly to explained variance beyond the controls!
+```{r}
+anova(lm_a_0, lm_a_1) # Topics add significantly to the model
+```
+
+
+Compare topics only predictor model (M1) with concerns + topics predictor model (M3): Concerns add significantly to explained variance beyond topics!
+```{r}
+anova(lm_a_1, lm_a_3) # Concerns add significantly to the model, beyond topics
+```
+
+
+Do concerns explain all variance that topics explain (does adding concerns to the model make topics redundant?)
+Compare concerns only predictor model (M2) with topics + concerns predictor model (M3): Topics adds significantly to the model, beyond concerns
+```{r}
+anova(lm_a_2, lm_a_3) # adding conversation topics adds significantly to the model, beyond moral concerns
+```
+
+
+Compare concerns + topic predictor model (M3) with full model (M4): Interactions add significantly to the model, beyond individual predictors
+```{r}
+anova(lm_a_3, lm_a_4) # adding interactions of concerns and topics adds significantly to the model
 ```
 
 
 ## Plots
-
 ### Distribution
 
-Create distribution plots.
+Create distribution plots of moral concerns by message type
 ```{r}
-#Moral Concerns
-df_plot = df_cleaned_a %>% group_by(type) %>% dplyr::summarise(care = sum(care==1)/n(), fairness = sum(fairness==1)/n(),
-                                                        loyalty = sum(loyalty==1)/n(), authority = sum(authority==1)/n(), purity = sum(purity==1)/n())
+# Calculate moral Concerns percentages
+df_plot <- df_cleaned_a %>% group_by(type) %>% dplyr::summarise(care = sum(care==1)/n()*100, fairness = sum(fairness==1)/n()*100,
+                                            loyalty = sum(loyalty==1)/n()*100, authority = sum(authority==1)/n()*100, purity = sum(purity==1)/n()*100)
+# restructure data sets
 df_plot <- df_plot %>% gather(-type, key="Concern", value = "Percentage")
+
+# show plots
 ggplot(data=df_plot, aes(x=type, fill=Concern)) + geom_bar(aes(x=type,y=Percentage),stat="identity", position="dodge") + ylab("Percent of posts with moral concerns") + xlab('Post type') + labs(fill="Moral Concern") + theme_bw()
 ```
 
-### Main Effects
 
-Create plots for each main effect.
-```{r}
-#needs to be improved!
-plot_model(lm_a_1, type = "pred", terms=c("care")) + theme(axis.text.x = element_text(angle=90, hjust=1))
-plot_model(lm_a_1, type = "pred", terms=c("fairness")) + theme(axis.text.x = element_text(angle=90, hjust=1))
-plot_model(lm_a_1, type = "pred", terms=c("loyalty")) + theme(axis.text.x = element_text(angle=90, hjust=1))
-plot_model(lm_a_1, type = "pred", terms=c("authority")) + theme(axis.text.x = element_text(angle=90, hjust=1))
-plot_model(lm_a_1, type = "pred", terms=c("purity")) + theme(axis.text.x = element_text(angle=90, hjust=1))
-```
-
-### Interactions
-
-Create plots for each interaction effect of moral concern x conversation topic
-```{r}
-plot_model(lm_a_1, type = "pred", terms = c("Topic_Name", "care"))  + theme(axis.text.x = element_text(angle=90, hjust=1))
-plot_model(lm_a_1, type = "pred", terms = c("Topic_Name", "purity"))  + theme(axis.text.x = element_text(angle=90, hjust=1))
-plot_model(lm_a_1, type = "pred", terms = c("Topic_Name", "fairness"))  + theme(axis.text.x = element_text(angle=90, hjust=1))
-plot_model(lm_a_1, type = "pred", terms = c("Topic_Name", "loyalty"))  + theme(axis.text.x = element_text(angle=90, hjust=1))
-plot_model(lm_a_1, type = "pred", terms = c("Topic_Name", "authority"))  + theme(axis.text.x = element_text(angle=90, hjust=1))
-```
-
-
-### Additional Information
-#### Examples for moral foundations
+## Additional Information
+### Examples for Moral Concerns
 
 Following codes extract examples of messages with a given moral concern or conversation topic.
 ```{r}
 # Get examples for moral values (from comments/posts)
 
-# 
-df_cleaned_a_long <- df_a %>% mutate(Dominant_Topic = factor(Dominant_Topic)) %>% filter(!(type=="post" & num_comments<10) & !(type=="comment" & parent_num_comments < 10)) %>% mutate(moral_count = rowSums(select(., c(care, fairness, loyalty, authority, purity)))) %>% filter(moral_count == 1 | moral_count == 0) %>% mutate(non_moral = ifelse(moral_count==0, 1, 0)) %>% pivot_longer(c(care, fairness, loyalty, authority, purity, non_moral), names_to = "moral", values_to = "value")
+# create data set by dividing messages into respective moral concerns (+ thin + non-moral)
+# filter out messages that are under low interaction/engagement posts (less than 10 comments) to get more representative examples
+df_cleaned_a_long <- df_a %>% mutate(Dominant_Topic = factor(Dominant_Topic)) %>% filter(!(type=="post" & num_comments<10) & !(type=="comment" & parent_num_comments < 10)) %>% mutate(moral_count = rowSums(select(., c(care, fairness, loyalty, authority, purity, thin)))) %>% filter(moral_count == 1 | moral_count == 0) %>% mutate(non_moral = ifelse(moral_count==0, 1, 0)) %>% pivot_longer(c(care, fairness, loyalty, authority, purity, thin, non_moral), names_to = "concern", values_to = "value")
 
 #text can be "deleted" or "removed" for posts, then look at title!
 set.seed(0)
-moral_examples <- df_cleaned_a_long %>% filter(value==1) %>% dplyr::select(type, moral, title, text) %>% group_by(type, moral) %>% sample_n(10) %>% ungroup()
+moral_examples <- df_cleaned_a_long %>% filter(value==1) %>% dplyr::select(type, concern, title, text) %>% group_by(type, concern) %>% sample_n(10) %>% ungroup()
 ```
 
 
 Get example messages.
 ```{r}
-#moral values by number (1-6: care, fairness, loyalty, authority, purity, non-moral)
-nr_val = 6 
-moral_vals <- unique(moral_examples$moral)
+#moral values by number (1-7: authority, care, fairness, loyalty, non_moral, purity, thin)
+nr_val = 1
+moral_vals <- unique(moral_examples$concern)
 mval <- moral_vals[nr_val] # convert number to moral concern name
 
-nr = 5 #number of example
+nr = 1 #number of example
 
 # print name of concern, example message title & text body
 print(mval)
-moral_examples[moral_examples$moral==mval,]$title[nr]
+moral_examples[moral_examples$concern==mval,]$title[nr]
 print("")
-moral_examples[moral_examples$moral==mval,]$text[nr]
+moral_examples[moral_examples$concern==mval,]$text[nr]
 ```
 
 
-#### Examples for Topics
+### Examples for Topics
 
 Get example messages for the respective topics
 ```{r}
@@ -313,7 +282,10 @@ topics_examples_showcase <- topics_examples %>% dplyr::select(Topic_Name, Domina
 
 Print out examples (by row -> check data frame for which row belongs to which topic)
 ```{r}
-nr = 253
+nr = 253  # there are 10 examples per topic -> new topic every 10 numbers
+
+print(as.character(topics_examples_showcase$Topic_Name[nr]))
+print("")
 topics_examples_showcase$title[nr]
 print("")
 topics_examples_showcase$text[nr]
@@ -324,26 +296,26 @@ topics_examples_showcase$text[nr]
 
 This code extracts messages of a given conversation topic that include a given moral concern.
 ```{r}
-# Get examples for moral values (comments/posts)
-df_cleaned_a_long <- df_a %>% mutate(Dominant_Topic = factor(Dominant_Topic)) %>% filter(!(type=="post" & num_comments<5) & !(type=="comment" & parent_num_comments < 5)) %>% mutate(moral_count = rowSums(select(., c(care, fairness, loyalty, authority, purity)))) %>% filter(moral_count == 1 | moral_count == 0) %>% mutate(non_moral = ifelse(moral_count==0, 1, 0)) %>% pivot_longer(c(care, fairness, loyalty, authority, purity, non_moral), names_to = "moral", values_to = "value")
+# Get examples for moral values (comments/posts), filter out messages with low engagement to get more representative examples
+df_cleaned_a_long <- df_a %>% mutate(Dominant_Topic = factor(Dominant_Topic)) %>% filter(!(type=="post" & num_comments<5) & !(type=="comment" & parent_num_comments < 5)) %>% mutate(moral_count = rowSums(select(., c(care, fairness, loyalty, authority, purity)))) %>% filter(moral_count == 1 | moral_count == 0) %>% mutate(non_moral = ifelse(moral_count==0, 1, 0)) %>% pivot_longer(c(care, fairness, loyalty, authority, purity, non_moral), names_to = "concern", values_to = "value")
 
 #text can be "deleted" or "removed" for posts, then look at title!
 #extract 7 messages with highest load on a given conversation topic that also include the respective moral concern
 set.seed(0)
-moral_examples_values <- df_cleaned_a_long %>% filter(value==1) %>% dplyr::select(type, moral, title, text, Topic_Name, Topic_Perc_Contrib) %>% group_by(Topic_Name, moral) %>% arrange(desc(Topic_Perc_Contrib)) %>% do(head(., n=7)) %>% ungroup()
+moral_examples_values <- df_cleaned_a_long %>% filter(value==1) %>% dplyr::select(type, concern, title, text, Topic_Name, Topic_Perc_Contrib) %>% group_by(Topic_Name, concern) %>% arrange(desc(Topic_Perc_Contrib)) %>% do(head(., n=7)) %>% ungroup()
 ```
 
 
 Print out the examples by row (check data frame for which row corresponds to which topic and moral concern)
 ```{r}
-nr = 1019
-moral_examples_values$moral[nr]
-as.character(moral_examples_values$Topic_Name[nr])
-moral_examples_values$title[nr]
+nr = 1019 #row number
+
+moral_examples_values$concern[nr] #name of moral concern
+as.character(moral_examples_values$Topic_Name[nr]) # name of topic
+print("")
+moral_examples_values$title[nr] #title
 print("")
 moral_examples_values$text[nr]
-
-#3 authority x negative_thoughts
 ```
 
 
@@ -352,26 +324,19 @@ moral_examples_values$text[nr]
 Create a data frame that shows the most frequent conversation topic in the comments under a post with a given conversation topic.
 How are topics in a post answered?
 ```{r message=F, warning=F}
-df_posts_a <- df_cleaned_a %>% filter(type=="post") %>% dplyr::select(id, care, fairness, loyalty, authority, purity, Topic_Name, score)
-df_comments_a <- df_cleaned_a %>% filter(type=="comment") %>% dplyr::select(id, parent_post, Topic_Name, care, fairness, loyalty, authority, purity, score)
-df_paired_a <- merge(df_comments_a, df_posts_a, by.x="parent_post", by.y="id")
-# df_paired_a$Topic_Name.y <- relevel(df_paired_a$Topic_Name.y, ref = "survival")
+# get topics from posts and comments, then match comments with their respective posts they were posted under
+df_posts_a <- df_cleaned_a %>% filter(type=="post") %>% dplyr::select(id, Topic_Name, score)
+df_comments_a <- df_cleaned_a %>% filter(type=="comment") %>% dplyr::select(id, parent_post, Topic_Name, score)
+df_paired_a <- merge(df_comments_a, df_posts_a, by.x="parent_post", by.y="id") #merge comments with parent posts
 
-# get which Topic in posts has which topics in comments mostly
+# get which post topic was most frequently responded by which message topic
 df_paired_freq <- df_paired_a %>% group_by(Topic_Name.y, Topic_Name.x) %>% summarise(n = n()) %>% mutate(freq = n / sum(n)) %>% group_by(Topic_Name.y) %>% arrange(desc(freq))
-
-df_paired_freq_heatmap <- df_paired_freq %>% dcast(Topic_Name.y ~ Topic_Name.x)
-rownames(df_paired_freq_heatmap) <- df_paired_freq_heatmap$Topic_Name.y
 ```
 
 
 Show the most frequent topic in response to each topic in post as a table
-
 ```{r}
-#kind of robustness check:
-  # manual check of example messages
-  # this check that looks into what topic is used to respond to a given topic (20 same topic, 6 different but related/reasonable!)
-
+#robustness check: # do the most frequent response topics fit the post topics
 df_paired_freq %>% group_by(Topic_Name.y) %>% arrange(desc(freq)) %>% do(head(., n=1)) %>% mutate(freq = round(freq*100,1)) #y = post, x = comment
 ```
 
