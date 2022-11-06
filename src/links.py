@@ -16,15 +16,17 @@ import requests
 import time
 from bs4 import BeautifulSoup
 import argparse
+from pathlib import Path
 
+folder = "../data/pushshift/"
 
 """ Function """
 
 def parse_args(): #get commandline arguments
     parser = argparse.ArgumentParser(description="Getting link ids for reddit dump downloads")
-    parser.add_argument('--mode', type=str, default = "comments", help='Type of post ("submission" or "comment")')
-    parser.add_argument('--start', type=str, default = "2014-01", help='Type of post ("submission" or "comment")')
-    parser.add_argument('--end', type=str, default = "2021-01", help='Type of post ("submission" or "comment")')
+    parser.add_argument('--mode', type=str, default = "comments", help='Type of post ("submissions" or "comments")')
+    parser.add_argument('--start', type=str, default = "2014-01", help='start date of data ("2012-01" or later)')
+    parser.add_argument('--end', type=str, default = "2021-01", help='end date of data (current month or earlier)')
     args=parser.parse_args()
     return args
 
@@ -35,6 +37,9 @@ def main():
     mode = args.mode
     start = args.start
     end = args.end
+    
+    #create folder structure
+    Path(folder + mode).mkdir(parents=True, exist_ok=True) #create folder for data files
     
     #link to pushshift
     url = "https://files.pushshift.io/reddit/" + mode + "/" 
@@ -58,7 +63,7 @@ def main():
     files_link     = set([url + file for file in files_link_all if (time.strptime(file.split("_")[1].split(".")[0], "%Y-%m") >= start_time) and (time.strptime(file.split("_")[1].split(".")[0], "%Y-%m")<=end_time)])
 
     #save in text file
-    with open("../data/General/links_" + mode + ".txt", "w") as f:
+    with open(folder + mode + "/links_" + mode + ".txt", "w") as f:
         f.write("\n".join(files_link))
     return 0
 
